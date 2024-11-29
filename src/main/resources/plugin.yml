@@ -1,4 +1,4 @@
-name: Sheep Empire
+name: Sheep
 version: '${version}'
 main: com.alfuwu.sheep.SheepEmpire
 api-version: '1.21'
