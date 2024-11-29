@@ -1,8 +1,6 @@
 package com.alfuwu.sheep;
 
-import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Sheep;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class SoulmateTask extends BukkitRunnable {

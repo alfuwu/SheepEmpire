@@ -23,13 +23,15 @@ import org.bukkit.entity.EntityType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Sheepish implements Listener  {
     List<DamageSource> tempSources = new ArrayList<>(); // prevents infinite recursion from happening between damaging players & sheep
+    Map<Player, Integer> cooldowns = new HashMap<>();
 
-    public static void toggleSheepify(Player player, int time) {
+    public void toggleSheepify(Player player, int time) {
         if (SheepEmpire.instance.sheeps.containsKey(player)) { // player is sheepo mode
             Pair<Sheep, Integer> pair = SheepEmpire.instance.sheeps.get(player);
             if (pair.right() == -1) {
@@ -53,18 +55,23 @@ public class Sheepish implements Listener  {
         }
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 12);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+        if (time > 0) {
+            cooldowns.put(player, 700);
+            new CooldownTask(this, player).runTaskTimer(SheepEmpire.instance, 0, 1);
+        }
     }
 
-    public static void handleClick(Player player, @Nullable Player hitPlayer) {
+    public void handleClick(Player player, @Nullable Player hitPlayer) {
         ItemStack item = player.getInventory().getItemInMainHand();
         boolean isSheepish = NBT.get(item, nbt -> {
             return nbt.getBoolean("sheep:sheepish");
         });
         if (isSheepish) {
             if (hitPlayer != null) {
-                toggleSheepify(hitPlayer, 100);
+                if (!cooldowns.containsKey(hitPlayer) && !hitPlayer.isInvisible())
+                    toggleSheepify(hitPlayer, 100);
             } else {
-                toggleSheepify(player, -1);
+                toggleSheepify(player, 100);
                 player.swingMainHand();
             }
         }
