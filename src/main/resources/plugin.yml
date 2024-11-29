@@ -1,5 +1,5 @@
 name: Sheep
-version: '${version}'
+version: '1.0'
 main: com.alfuwu.sheep.SheepEmpire
 api-version: '1.21'
 authors: [ Alfuwu ;) ]
