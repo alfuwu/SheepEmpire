@@ -78,8 +78,11 @@ public class Sheepish implements Listener  {
 
     @EventHandler
     public void onPlayerAttack(PrePlayerAttackEntityEvent event) {
-        if (event.willAttack() && event.getAttacked() instanceof Player player)
+        if (event.getAttacked() instanceof Player player)
             handleClick(event.getPlayer(), player);
+        for (Map.Entry<Player, Pair<Sheep, Integer>> entry : SheepEmpire.instance.sheeps.entrySet())
+            if (event.getPlayer() == entry.getKey() && event.getAttacked() == entry.getValue().left())
+                event.setCancelled(true); // prevent attacking own transformation
     }
 
     @EventHandler
