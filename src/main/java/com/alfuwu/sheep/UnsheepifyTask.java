@@ -21,6 +21,7 @@ public class UnsheepifyTask extends BukkitRunnable {
                 SheepEmpire.instance.sheeps.remove(player);
                 pair.left().remove();
                 player.setInvisible(false);
+                Sheepish.sendArmor(player);
             }
         } else {
             pair.right(pair.right() - 1);

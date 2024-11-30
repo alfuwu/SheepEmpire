@@ -1,10 +1,14 @@
 package com.alfuwu.sheep;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.EnumWrappers;
 import de.tr7zw.nbtapi.NBT;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectIntMutablePair;
-import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.damage.DamageSource;
@@ -16,20 +20,26 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.entity.EntityType;
+import org.bukkit.inventory.meta.ArmorMeta;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Sheepish implements Listener  {
-    List<DamageSource> tempSources = new ArrayList<>(); // prevents infinite recursion from happening between damaging players & sheep
-    Map<Player, Integer> cooldowns = new HashMap<>();
+    public static List<EnumWrappers.ItemSlot> ARMORS = List.of(EnumWrappers.ItemSlot.HEAD, EnumWrappers.ItemSlot.CHEST, EnumWrappers.ItemSlot.LEGS, EnumWrappers.ItemSlot.FEET);
+    public List<DamageSource> tempSources = new ArrayList<>(); // prevents infinite recursion from happening between damaging players & sheep
+    public Map<Player, Integer> cooldowns = new HashMap<>();
 
     public void toggleSheepify(Player player, int time) {
         if (SheepEmpire.instance.sheeps.containsKey(player)) { // player is sheepo mode
@@ -39,6 +49,7 @@ public class Sheepish implements Listener  {
                 SheepEmpire.instance.sheeps.remove(player);
                 player.setInvisible(false);
                 player.setCollidable(true);
+                sendArmor(player);
             } else if (time != -1) {
                 pair.right(time);
             }
@@ -52,6 +63,7 @@ public class Sheepish implements Listener  {
             new SoulmateTask(player, sheep).runTaskTimer(SheepEmpire.instance, 0, 1);
             if (time > 0)
                 new UnsheepifyTask(player).runTaskTimer(SheepEmpire.instance, 0, 1);
+            removeArmor(player);
         }
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 12);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
@@ -63,6 +75,8 @@ public class Sheepish implements Listener  {
 
     public void handleClick(Player player, @Nullable Player hitPlayer) {
         ItemStack item = player.getInventory().getItemInMainHand();
+        if (item.isEmpty())
+            return;
         boolean isSheepish = NBT.get(item, nbt -> {
             return nbt.getBoolean("sheep:sheepish");
         });
@@ -71,16 +85,70 @@ public class Sheepish implements Listener  {
                 if (!cooldowns.containsKey(hitPlayer) && !hitPlayer.isInvisible())
                     toggleSheepify(hitPlayer, 100);
             } else {
-                toggleSheepify(player, 100);
+                toggleSheepify(player, -1);
                 player.swingMainHand();
             }
         }
     }
 
+    public static void sendArmor(Player player) {
+        if (player == null)
+            return;
+        PacketContainer packetContainer = new PacketContainer(PacketType.Play.Server.ENTITY_EQUIPMENT);
+        packetContainer.getIntegers().write(0, player.getEntityId());
+        packetContainer.getSlotStackPairLists().write(0, ARMORS.stream().map(s -> (com.comphenix.protocol.wrappers.Pair<EnumWrappers.ItemSlot, ItemStack>)new com.comphenix.protocol.wrappers.Pair(s, getItem(player, s))).toList());
+        for (Player onlinePlayer : player.getWorld().getPlayers()) {
+            if (onlinePlayer.getUniqueId().equals(player.getUniqueId()))
+                continue;
+            try {
+                ProtocolLibrary.getProtocolManager().sendServerPacket(onlinePlayer, packetContainer, false); //false=ignore listeners that don't just monitor
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void removeArmor(Player player) {
+        if (player == null)
+            return;
+        PacketContainer packetContainer = new PacketContainer(PacketType.Play.Server.ENTITY_EQUIPMENT);
+        packetContainer.getIntegers().write(0, player.getEntityId());
+        packetContainer.getSlotStackPairLists().write(0, ARMORS.stream().map(s -> (com.comphenix.protocol.wrappers.Pair<EnumWrappers.ItemSlot, ItemStack>)new com.comphenix.protocol.wrappers.Pair(s, ItemStack.empty())).toList());
+        for (Player onlinePlayer : player.getWorld().getPlayers())  {
+            if (onlinePlayer.getUniqueId().equals(player.getUniqueId()))
+                continue;
+            try {
+                ProtocolLibrary.getProtocolManager().sendServerPacket(onlinePlayer, packetContainer);
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static ItemStack getItem(Player player, EnumWrappers.ItemSlot slot) {
+        return player.getInventory().getItem(switch (slot) {
+            case EnumWrappers.ItemSlot.HEAD -> EquipmentSlot.HEAD;
+            case EnumWrappers.ItemSlot.CHEST -> EquipmentSlot.CHEST;
+            case EnumWrappers.ItemSlot.LEGS -> EquipmentSlot.LEGS;
+            case EnumWrappers.ItemSlot.FEET -> EquipmentSlot.FEET;
+            default -> EquipmentSlot.HAND;
+        });
+    }
+
+    @EventHandler
+    public void onPlayerEquip(InventoryClickEvent event) {
+        if (((event.getSlot() >= 36 && event.getSlot() <= 39) || event.isShiftClick()) && event.getWhoClicked() instanceof Player player && SheepEmpire.instance.sheeps.containsKey(player))
+            Bukkit.getScheduler().runTaskLater(SheepEmpire.instance, () -> removeArmor(player), 1);
+    }
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction().isRightClick() && event.getAction() != Action.RIGHT_CLICK_BLOCK)
-            handleClick(event.getPlayer(), null);
+        if (event.getAction().isRightClick()) {
+            if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
+                handleClick(event.getPlayer(), null);
+            if (event.getItem() != null && SheepEmpire.instance.sheeps.containsKey(event.getPlayer()))
+                Bukkit.getScheduler().runTaskLater(SheepEmpire.instance, () -> removeArmor(event.getPlayer()), 1);
+        }
     }
 
     @EventHandler

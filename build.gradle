@@ -36,11 +36,16 @@ repositories {
         name = "CodeMC"
         url = "https://repo.codemc.io/repository/maven-public/"
     }
+    maven {
+        name = "dmulloy"
+        url = "https://repo.dmulloy2.net/repository/public/"
+    }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT"
     compileOnly "de.tr7zw:item-nbt-api-plugin:2.14.0"
+    compileOnly group: "com.comphenix.protocol", name: "ProtocolLib", version: "4.8.0";
 }
 
 processResources {

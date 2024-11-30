@@ -41,6 +41,8 @@ public class Sheeper implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEntityEvent event) {
         ItemStack item = event.getPlayer().getInventory().getItem(event.getHand());
+        if (item.isEmpty())
+            return;
         boolean isSheeper = NBT.get(item, nbt -> {
             return nbt.getBoolean("sheep:sheeper");
         });
