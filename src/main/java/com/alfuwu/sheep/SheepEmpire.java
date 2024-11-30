@@ -17,7 +17,6 @@ public final class SheepEmpire extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
-        // Plugin startup logic
         getLogger().info("SHEEP");
         getServer().getPluginManager().registerEvents(new Sheepish(), this);
         getServer().getPluginManager().registerEvents(new Sheeper(), this);
