@@ -48,7 +48,6 @@ public class Sheepish implements Listener  {
                 pair.left().remove();
                 SheepEmpire.instance.sheeps.remove(player);
                 player.setInvisible(false);
-                player.setCollidable(true);
                 sendArmor(player);
             } else if (time != -1) {
                 pair.right(time);
@@ -56,8 +55,6 @@ public class Sheepish implements Listener  {
         } else {
             Sheep sheep = (Sheep)player.getWorld().spawnEntity(player.getLocation(), EntityType.SHEEP, false);
             sheep.setAI(false);
-            sheep.setCollidable(false);
-            player.setCollidable(false);
             player.setInvisible(true);
             SheepEmpire.instance.sheeps.put(player, new ObjectIntMutablePair<>(sheep, time > 0 ? time : -1));
             new SoulmateTask(player, sheep).runTaskTimer(SheepEmpire.instance, 0, 1);
